@@ -38,7 +38,7 @@ public class Game1 : Game {
         GraphicsDevice.Clear(Color.CornflowerBlue);
         float wave = MathF.Pow(MathF.Sin((float)gameTime.TotalGameTime.TotalSeconds * 0.25f * float.Pi), 2);
         _spriteBatch.Begin();
-        var text = "He|lo!\n(y) Line?";
+        var text = "He|lo!\n(y) Lنne?";
         float angle = float.Pi * 0.6f * (1 - wave);
         float scale = 0.25f + 0.75f * wave;
         Vector2 size = font.MeasureString(text, 60, null, scale, null);

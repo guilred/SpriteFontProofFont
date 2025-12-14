@@ -8,7 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace SpriteFontProofFont;
 public sealed class SFProofFont: IDisposable {
-    private readonly Dictionary<char, (int, int)> _charsData = [];
+    private readonly Dictionary<char, (int x, int w)> _charsData = [];
     private readonly Texture2D _atlas;
     public int Size => _atlas.Height;
     public float Spacing { get; set; } = 10;
@@ -60,8 +60,10 @@ public sealed class SFProofFont: IDisposable {
                 curr_x = 0;
                 continue;
             }
-            var (_, w) = _charsData[c];
-            curr_x += (w + spacing.Value) * fontScale;
+            if (!_charsData.TryGetValue(c, out var offset)) {
+                offset = _charsData['ø'];
+            }
+            curr_x += (offset.w + spacing.Value) * fontScale;
         }
         size.X = float.Max(size.X, curr_x) - spacing.Value * fontScale;
         return size * scale;
@@ -83,11 +85,13 @@ public sealed class SFProofFont: IDisposable {
                 curr_y += height + lineSpacing.Value * fontScale;
                 continue;
             }
-            var (x, w) = _charsData[c];
-            Rectangle sourceRect = new(x, 0, w, Size);
+            if (!_charsData.TryGetValue(c, out var offset)) {
+                offset = _charsData['ø'];
+            }
+            Rectangle sourceRect = new(offset.x, 0, offset.w, Size);
             Vector2 drawPos = Vector2.Rotate((new Vector2(curr_x, curr_y) - position) * scale, rotation) + position;
             sb.Draw(_atlas, drawPos, sourceRect, color, rotation, Vector2.Zero, fontScale * scale, SpriteEffects.None, 0);
-            curr_x += (w + spacing.Value) * fontScale;
+            curr_x += (offset.w + spacing.Value) * fontScale;
         }
     }
     public void Dispose() {
