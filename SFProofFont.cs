@@ -61,7 +61,7 @@ public sealed class SFProofFont: IDisposable {
                 continue;
             }
             if (!_charsData.TryGetValue(c, out var offset)) {
-                offset = _charsData['ø'];
+                offset = _charsData['?'];
             }
             curr_x += (offset.w + spacing.Value) * fontScale;
         }
@@ -86,7 +86,7 @@ public sealed class SFProofFont: IDisposable {
                 continue;
             }
             if (!_charsData.TryGetValue(c, out var offset)) {
-                offset = _charsData['ø'];
+                offset = _charsData['?'];
             }
             Rectangle sourceRect = new(offset.x, 0, offset.w, Size);
             Vector2 drawPos = Vector2.Rotate((new Vector2(curr_x, curr_y) - position) * scale, rotation) + position;

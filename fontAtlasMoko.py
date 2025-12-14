@@ -112,7 +112,7 @@ class SpriteFontPackerUI:
         try:
             font = pg.Font(self.font_path, 120)
             chars_to_use = chars_input.replace(" ", "").replace("\n", "")
-            chars = list(chars_to_use + ("" if "ø" in chars_to_use else "ø"))
+            chars = list(chars_to_use + ("" if "?" in chars_to_use else "?"))
             chars_surfaces = dict()
             
             for c in chars:
