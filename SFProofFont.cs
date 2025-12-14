@@ -1,9 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.IO.Compression;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using System;
 
 
 namespace SpriteFontProofFont;
@@ -41,6 +41,30 @@ public sealed class SFProofFont: IDisposable {
             _charsData.Add(c, (x, w));
         }
         Directory.Delete(TempFolder, true);
+    }
+    public Vector2 MeasureString(string text, float height, float? spacing = null, float scale = 1, float? lineSpacing = null) {
+        float fontScale = height / Size;
+        Vector2 size = Vector2.UnitY * height;
+        float curr_x = 0;
+        spacing ??= Spacing;
+        lineSpacing ??= LineSpacing;
+        for (int i = 0; i < text.Length; i++) {
+            char c = text[i];
+            if (c == ' ') {
+                curr_x += spacing.Value * 2;
+                continue;
+            }
+            else if (c == '\n') {
+                size.Y += height + lineSpacing.Value * fontScale;
+                size.X = float.Max(size.X, curr_x);
+                curr_x = 0;
+                continue;
+            }
+            var (_, w) = _charsData[c];
+            curr_x += (w + spacing.Value) * fontScale;
+        }
+        size.X = float.Max(size.X, curr_x) - spacing.Value * fontScale;
+        return size * scale;
     }
     public void DrawString(SpriteBatch sb, string text, Vector2 position, Color color, float height, float? spacing, float rotation, float scale, float? lineSpacing = null) {
         float fontScale = height / Size;
