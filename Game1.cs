@@ -38,22 +38,21 @@ public class Game1 : Game {
         GraphicsDevice.Clear(Color.CornflowerBlue);
         float wave = MathF.Pow(MathF.Sin((float)gameTime.TotalGameTime.TotalSeconds * 0.25f * float.Pi), 2);
         _spriteBatch.Begin();
-        var text = "He|lo!\n(y) Lنne?";
+        var text = " <(`>`)\n(y) * |)\n cD | |D\n    j bb";
         float angle = float.Pi * 0.6f * (1 - wave);
         float scale = 0.25f + 0.75f * wave;
-        Vector2 size = font.MeasureString(text, 60, null, scale, null);
+        Vector2 size = font.MeasureString(text, 100 * scale);
         _spriteBatch.Draw(
             pixel,
-            new Rectangle(100, 30, (int)size.X, (int)size.Y),
+            new Rectangle(300, 40, (int)size.X, (int)size.Y),
             null, Color.Red,
             angle, Vector2.Zero, SpriteEffects.None, 0
         );
         font.DrawString(
             _spriteBatch,
             text,
-            new(100, 30),
-            Color.Green, 60, null,
-            angle, scale, null
+            new(300, 40),
+            Color.Green, 100 * scale, angle
         );
         _spriteBatch.End();
 
