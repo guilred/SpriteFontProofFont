@@ -110,12 +110,11 @@ public sealed class SFProofFont : IDisposable {
     }
     public Vector2 MeasureString(string text, float height, float? spacing = null, float? lineSpacing = null, int? index = null, int? length = null) {
         if (text.Length == 0) return Vector2.Zero;
-
-        var atlas = GetBestAtlas(height);
+        var largestAtlas = GetBestAtlas(int.MaxValue);
         float spacingScale = height / 120f;
-        float atlasScale = height / atlas.Size;
+        float lAtlasScale = height / largestAtlas.Atlas.Height;
         Vector2 size = Vector2.UnitY * height;
-        float curr_x = 0;
+        float currWidth = 0;
 
         spacing ??= Spacing;
         lineSpacing ??= LineSpacing;
@@ -126,37 +125,39 @@ public sealed class SFProofFont : IDisposable {
             char c = text[i];
 
             if (c == ' ') {
-                if (atlas.CharsData.TryGetValue('$', out var dlrData)) {
-                    curr_x += (dlrData.w - 2) * atlasScale - spacing.Value * 2 * spacingScale;
+                if (largestAtlas.CharsData.TryGetValue('$', out var dlrData)) {
+                    currWidth += dlrData.w * lAtlasScale - spacing.Value * 2 * spacingScale;
                 }
                 else {
-                    curr_x += spacing.Value * spacingScale;
+                    currWidth += spacing.Value * spacingScale;
                 }
                 continue;
             }
             else if (c == '\n') {
                 size.Y += height + lineSpacing.Value * spacingScale;
-                size.X = Math.Max(size.X, curr_x - spacing.Value * spacingScale);
-                curr_x = 0;
+                size.X = Math.Max(size.X, currWidth - spacing.Value * spacingScale);
+                currWidth = 0;
                 continue;
             }
 
-            if (!atlas.CharsData.TryGetValue(c, out var offset)) {
-                if (!atlas.CharsData.TryGetValue('?', out var fallback))
+            if (!largestAtlas.CharsData.TryGetValue(c, out var offset)) {
+                if (!largestAtlas.CharsData.TryGetValue('?', out var fallback))
                     continue;
                 offset = fallback;
             }
-            curr_x += offset.w * atlasScale + spacing.Value * spacingScale;
+            currWidth += offset.w * lAtlasScale + spacing.Value * spacingScale;
         }
-
-        size.X = Math.Max(size.X, curr_x - spacing.Value * spacingScale);
+        size.X = Math.Max(size.X, currWidth - spacing.Value * spacingScale);
         return size;
     }
 
     public void DrawString(SpriteBatch sb, string text, Vector2 position, Color color, float height, float rotation, float? spacing = null, float? lineSpacing = null, int? index = null, int? length = null) {
+        if (text.Length == 0) return;
         var atlas = GetBestAtlas(height);
+        var atlas2 = GetBestAtlas(int.MaxValue);
         float spacingScale = height / 120f;
         float atlasScale = height / atlas.Size;
+        float atlas2Scale = height / atlas2.Size;
         float curr_x = position.X;
         float curr_y = position.Y;
 
@@ -167,10 +168,9 @@ public sealed class SFProofFont : IDisposable {
 
         for (int i = index.Value; i < index.Value + length.Value && i < text.Length; i++) {
             char c = text[i];
-
             if (c == ' ') {
-                if (atlas.CharsData.TryGetValue('$', out var dlrData)) {
-                    curr_x += (dlrData.w - 2) * atlasScale - spacing.Value * 2 * spacingScale;
+                if (atlas2.CharsData.TryGetValue('$', out var dlrData)) {
+                    curr_x += dlrData.w * atlas2Scale - spacing.Value * 2 * spacingScale;
                 }
                 else {
                     curr_x += spacing.Value * spacingScale;
@@ -184,20 +184,24 @@ public sealed class SFProofFont : IDisposable {
             }
 
             if (!atlas.CharsData.TryGetValue(c, out var offset)) {
-                if (!atlas.CharsData.TryGetValue('?', out var fallback))
+                if (!atlas.CharsData.TryGetValue('?', out offset))
                     continue;
-                offset = fallback;
             }
             Rectangle sourceRect = new(offset.x, 0, offset.w, atlas.Size);
-            Vector2 drawPos = rotation != 0
-                ? Vector2.Rotate(new Vector2(curr_x, curr_y) - position, rotation) + position
-                : new Vector2(curr_x, curr_y);
+            Vector2 drawPos = new(curr_x, curr_y);
+            if (rotation != 0) {
+                drawPos.RotateAround(position, rotation);
+            }
 
             sb.Draw(atlas.Atlas, drawPos, sourceRect, color, rotation, Vector2.Zero, atlasScale, SpriteEffects.None, 0);
-            curr_x += offset.w * atlasScale + spacing.Value * spacingScale;
+
+            if (!atlas2.CharsData.TryGetValue(c, out var offset2)) {
+                if (!atlas2.CharsData.TryGetValue('?', out offset2))
+                    continue;
+            }
+            curr_x += offset2.w * atlas2Scale + spacing.Value * spacingScale;
         }
     }
-
     public void DrawStringOutlined(SpriteBatch sb, string text, Vector2 position, Color color, Color outlineColor, float height, float outlineWidth, float step, float rotation, float? spacing = null, float? lineSpacing = null) {
         for (float i = -1; i <= 1; i += step) {
             for (float j = -1; j <= 1; j += step) {
