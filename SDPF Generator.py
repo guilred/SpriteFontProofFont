@@ -7,7 +7,6 @@ import io
 import zipfile
 
 pg.init()
-
 WHITE = (255, 255, 255)
 TRANSPARENT = (0, 0, 0, 0)
 BLACK = (0, 0, 0)
@@ -58,9 +57,9 @@ def x_cut(surface, background_color=None):
 def get_text_surface(font, text, color):
     return font.render(text, True, color)
 
-def generate_atlas_at_size(font_path, size, chars):
+def generate_atlas_at_size(font_path, size, chars, monospace=False):
     """Generate a single atlas at a specific font size"""
-    font = pg.Font(font_path, size)
+    font = pg.font.Font(font_path, size)
     chars_surfaces = {}
     
     for c in chars:
@@ -83,13 +82,23 @@ def generate_atlas_at_size(font_path, size, chars):
         return None, None, None
     
     cropped_chars_surfaces = {}
+    max_char_width = 0
+    
     for c in valid_chars:
         sf = chars_surfaces[c]
         cropped = x_cut(sf)
         cropped = cropped.subsurface((0, min_y, cropped.get_width(), max_y - min_y)).copy()
         cropped_chars_surfaces[c] = cropped
+        
+        if cropped.get_width() > max_char_width:
+            max_char_width = cropped.get_width()
     
-    total_width = sum(cropped_chars_surfaces[c].get_width() for c in valid_chars)
+    if monospace:
+        char_widths = {c: max_char_width for c in valid_chars}
+    else:
+        char_widths = {c: cropped_chars_surfaces[c].get_width() for c in valid_chars}
+    
+    total_width = sum(char_widths[c] for c in valid_chars)
     total_width += ATLAS_GAP * (len(valid_chars) - 1)
 
     height = max_y - min_y
@@ -102,15 +111,19 @@ def generate_atlas_at_size(font_path, size, chars):
     curr_x = 0
     for i, c in enumerate(valid_chars):
         sf = cropped_chars_surfaces[c]
+        slot_width = char_widths[c]
 
-        # This is the TRUE glyph start (what you want stored)
         char_x = curr_x
+        
+        if monospace:
+            blit_x = char_x + (slot_width - sf.get_width()) // 2
+        else:
+            blit_x = char_x
 
-        atlas.blit(sf, (char_x, 0))
-        chars_data += f"{c} {char_x} {sf.get_width()}\n"
+        atlas.blit(sf, (blit_x, 0))
+        chars_data += f"{c} {char_x} {slot_width}\n"
 
-        # Advance cursor by glyph width + gap (except after last glyph)
-        curr_x += sf.get_width()
+        curr_x += slot_width
         if i != len(valid_chars) - 1:
             curr_x += ATLAS_GAP
         
@@ -151,12 +164,16 @@ class SpriteFontPackerUI:
             cb = ttk.Checkbutton(checkbox_container, text=f"{size}px", variable=var)
             cb.grid(row=i // cols, column=i % cols, sticky=tk.W, padx=5, pady=2)
         
-        # Buttons for select all/none
+        # Buttons for select all/none and Mono Toggle
         button_container = ttk.Frame(size_frame)
-        button_container.pack(pady=5)
+        button_container.pack(pady=5, fill=tk.X)
         
         ttk.Button(button_container, text="Select All", command=lambda: self.toggle_all_sizes(True), width=12).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_container, text="Deselect All", command=lambda: self.toggle_all_sizes(False), width=12).pack(side=tk.LEFT, padx=5)
+        
+        # Add Monospace Toggle Checkbox
+        self.mono_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(button_container, text="Force Monospace (Max Width)", variable=self.mono_var).pack(side=tk.RIGHT, padx=15)
         
         self.font_label = ttk.Label(self.root, text="No font selected", font=("Arial", 10), foreground="gray")
         self.font_label.pack(pady=5)
@@ -205,13 +222,14 @@ class SpriteFontPackerUI:
             return
         
         sizes.sort()  # Ensure they're in order
+        is_mono = self.mono_var.get()
         
         self.status_label.config(text="Processing...", foreground="orange")
         self.root.update()
         
         try:
             chars_to_use = chars_input.replace("\n", "")
-            chars = list(dict.fromkeys(chars_to_use))  # Remove duplicates while preserving order
+            chars = list(dict.fromkeys(chars_to_use))
             if '?' not in chars:
                 chars.append('?')
             
@@ -231,18 +249,16 @@ class SpriteFontPackerUI:
                     self.status_label.config(text=f"Generating atlas at {size}px...", foreground="orange")
                     self.root.update()
                     
-                    atlas, chars_data, actual_height = generate_atlas_at_size(self.font_path, size, chars)
+                    atlas, chars_data, actual_height = generate_atlas_at_size(self.font_path, size, chars, monospace=is_mono)
                     
                     if atlas is None:
                         continue
                     
-                    # Save atlas as PNG
                     atlas_bytes = io.BytesIO()
                     pg.image.save(atlas, atlas_bytes, 'PNG')
                     z.writestr(f'atlas_{size}', atlas_bytes.getvalue())
                     z.writestr(f'chars_data_{size}', chars_data)
                 
-                # Save metadata
                 metadata = f"sizes: {','.join(map(str, sizes))}"
                 z.writestr('metadata', metadata)
             
